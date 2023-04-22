@@ -1,3 +1,6 @@
+// Bat and Ball game
+// Rob Probin, 22 Apr 2023
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -23,9 +26,13 @@ let brickPadding = canvas.width * 0.01;
 let brickOffsetTop = canvas.height * 0.1;
 let brickOffsetLeft = canvas.width * 0.04;
 
-function reset_ball_speed() {
+let level = 1;
+
+function reset_ball() {
     dx = canvas.width * 0.004;
     dy = -canvas.height * 0.006;
+    ballX = canvas.width / 2;
+    ballY = canvas.height - (canvas.height * 0.1);
 }
 
 function update_game_elements(old_width, old_height) {
@@ -151,10 +158,26 @@ function drawBall() {
   ctx.closePath();
 }
 
-const brickColors = ['#FFA07A', '#7FFF00', '#1E90FF', '#FFD700', '#DC143C'];
+const brickColours1 = ['#FFA07A', '#7FFF00', '#1E90FF', '#FFD700', '#DC143C'];
+const brickColours2 = ['#FFFFFF', '#C0C0C0', '#A0A0A0', '#808080', '#404040'];
+const brickColours3 = ['#FFFF80', '#C0C070', '#A0A060', '#808050', '#404020'];
 
+
+function resetBricks() {
+  for (let c = 0; c < brickColumnCount; c++) {
+    for (let r = 0; r < brickRowCount; r++) {
+      bricks[c][r].status = 1;
+    }
+  }
+}
 
 function drawBricks() {
+  colours = brickColours3;
+  if (level % 3 === 1) {
+    colours = brickColours1;
+  } else if(level % 3 === 2) {
+    colours = brickColours2;
+  }
   for (let c = 0; c < brickColumnCount; c++) {
     for (let r = 0; r < brickRowCount; r++) {
       if (bricks[c][r].status === 1) {
@@ -164,33 +187,13 @@ function drawBricks() {
         bricks[c][r].y = brickY;
         ctx.beginPath();
         ctx.rect(brickX, brickY, brickWidth, brickHeight);
-        ctx.fillStyle = brickColors[r % brickColors.length]; // Set the fillStyle based on the row index
+        ctx.fillStyle = colours[r % brickColours1.length]; // Set the fillStyle based on the row index
         ctx.fill();
         ctx.closePath();
       }
     }
   }
 }
-
-
-
-//function drawBricks() {
-//  for (let c = 0; c < brickColumnCount; c++) {
-//   for (let r = 0; r < brickRowCount; r++) {
-//      if (bricks[c][r].status === 1) {
-//        const brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
-//        const brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop;
-//        bricks[c][r].x = brickX;
-//        bricks[c][r].y = brickY;
-//        ctx.beginPath();
-//        ctx.rect(brickX, brickY, brickWidth, brickHeight);
-//        ctx.fillStyle = '#0095DD';
-//        ctx.fill();
-//        ctx.closePath();
-//      }
-//    }
-//  }
-//}
 
 
 function collisionDetection() {
@@ -203,8 +206,11 @@ function collisionDetection() {
           brick.status = 0;
           score++;
           if (score === brickRowCount * brickColumnCount) {
-            alert('Congratulations, you won!');
-            document.location.reload();
+            //alert('Congratulations, you won!');
+            //document.location.reload();
+            resetBricks();
+            reset_ball();
+            level = level + 1;
           }
         }
       }
@@ -213,20 +219,6 @@ function collisionDetection() {
 }
 
 
-
-function old_collisionDetection() {
-  for (let c = 0; c < brickColumnCount; c++) {
-    for (let r = 0; r < brickRowCount; r++) {
-      const brick = bricks[c][r];
-      if (brick.status === 1) {
-        if (ballX > brick.x && ballX < brick.x + brickWidth && ballY > brick.y && ballY < brick.y + brickHeight) {
-          dy = -dy;
-          brick.status = 0;
-        }
-      }
-    }
-  }
-}
 
 function drawScore() {
   ctx.font = '16px Arial';
@@ -284,9 +276,7 @@ function draw() {
         alert('Game Over');
         document.location.reload();
       } else {
-        ballX = canvas.width / 2;
-        ballY = canvas.height - 30;
-        reset_ball_speed();
+        reset_ball();
         paddleX = (canvas.width - paddleWidth) / 2;
       }
     }
