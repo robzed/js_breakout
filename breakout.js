@@ -4,6 +4,12 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// https://sfxr.me/
+const lostBallSound = new Audio('lost_ball.wav');
+const paddleHitSound = new Audio('paddle_hit.wav');
+const brickHitSound = new Audio('brick_hit.wav');
+const wallHitSound = new Audio('wall_hit.wav');
+
 // Paddle
 let paddleWidth = canvas.width * 0.15;
 let paddleHeight = canvas.height * 0.025;
@@ -219,6 +225,8 @@ function collisionDetection() {
 
           brick.status = 0;
           score++;
+          brickHitSound.play(); // Play the brick hit sound
+
           bricks_left--;
           if (bricks_left === 0) {
             //alert('Congratulations, you won!');
@@ -264,13 +272,14 @@ function draw() {
   if (ballX + dx > canvas.width - ballRadius || ballX + dx < ballRadius) {
     dx = -dx;
     reflect_off_vertical();
+    wallHitSound.play(); // Play the wall hit sound
   }
 
   // bounce off top wall
   if (ballY + dy < ballRadius) {
     dy = -dy;
     reflect_off_horizontal();
-
+    wallHitSound.play(); // Play the wall hit sound
 
   // bounce off bat OR lose a life / end game
   } else if (ballY + dy > canvas.height - ballRadius) {
@@ -278,6 +287,8 @@ function draw() {
     // on the main part of the bat
     if (ballX > paddleX && ballX < paddleX + paddleWidth) {
 
+        paddleHitSound.play(); // Play the paddle hit sound
+        
         dy = -dy;
         reflect_off_horizontal();
 
@@ -335,6 +346,7 @@ function draw() {
 */
     } else {
       lives--;
+      lostBallSound.play()
       if (!lives) {
         alert('Game Over');
         document.location.reload();
