@@ -14,8 +14,8 @@ let paddleX = (canvas.width - paddleWidth) / 2;
 let ballRadius = canvas.height * 0.02;
 let ballX = canvas.width / 2;
 let ballY = canvas.height - (canvas.height * 0.1);
-let dx = canvas.width * 0.004;
-let dy = -canvas.height * 0.006;
+let ball_speed = canvas.width * 0.005;
+let ball_angle = degrees_to_radians(-41);
 
 // Bricks
 const brickRowCount = 5;
@@ -28,10 +28,24 @@ let brickOffsetLeft = canvas.width * 0.04;
 
 let level = 1;
 
+function degrees_to_radians(degrees) {
+  return degrees * (Math.PI / 180);
+}
+
+function reflect_off_horizontal() {
+    ball_angle = -ball_angle
+}
+
+function reflect_off_vertical() {
+    ball_angle = Math.PI - ball_angle
+}
+
+
 function reset_ball() {
-    dx = canvas.width * 0.004;
-    dy = -canvas.height * 0.006;
-    ballX = canvas.width / 2;
+    ball_speed = canvas.width * 0.005;
+    ball_angle = degrees_to_radians(-41);
+    //ballX = canvas.width / 2;
+    ballX = paddleX + (paddleWidth / 2);
     ballY = canvas.height - (canvas.height * 0.1);
 }
 
@@ -46,10 +60,7 @@ function update_game_elements(old_width, old_height) {
     ballRadius = canvas.height * 0.02;
     ballX = (ballX / old_width) * canvas.width;
     ballY = (ballY / old_height) * canvas.height;
-    //ballX = canvas.width / 2;
-    //ballY = canvas.height - (canvas.height * 0.1);
-    dx = canvas.width * 0.004;
-    dy = -canvas.height * 0.006;
+    ball_speed = (ball_speed / old_width) * canvas.width
 
     // Bricks
     brickWidth = canvas.width * 0.1;
@@ -72,11 +83,11 @@ for (let c = 0; c < brickColumnCount; c++) {
     bricks[c][r] = { x: 0, y: 0, status: 1 };
   }
 }
+let bricks_left = brickColumnCount*brickRowCount;
 
 window.addEventListener('resize', resizeCanvas);
 
 function resizeCanvas() {
-  undo_ball_position_scaling();
 
   // Update canvas size
   let old_width = canvas.width
@@ -102,17 +113,17 @@ document.addEventListener('touchstart', touchStartHandler);
 document.addEventListener('touchmove', touchMoveHandler);
 
 function keyDownHandler(e) {
-  if (e.key === 'Right' || e.key === 'ArrowRight') {
+  if (e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D' ) {
     rightPressed = true;
-  } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+  } else if (e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ) {
     leftPressed = true;
   }
 }
 
 function keyUpHandler(e) {
-  if (e.key === 'Right' || e.key === 'ArrowRight') {
+  if (e.key === 'Right' || e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D' ) {
     rightPressed = false;
-  } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+  } else if (e.key === 'Left' || e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A' ) {
     leftPressed = false;
   }
 }
@@ -169,6 +180,7 @@ function resetBricks() {
       bricks[c][r].status = 1;
     }
   }
+  bricks_left = brickColumnCount*brickRowCount
 }
 
 function drawBricks() {
@@ -202,10 +214,13 @@ function collisionDetection() {
       const brick = bricks[c][r];
       if (brick.status === 1) {
         if (ballX > brick.x && ballX < brick.x + brickWidth && ballY > brick.y && ballY < brick.y + brickHeight) {
-          dy = -dy;
+          //dy = -dy;
+          reflect_off_horizontal();
+
           brick.status = 0;
           score++;
-          if (score === brickRowCount * brickColumnCount) {
+          bricks_left--;
+          if (bricks_left === 0) {
             //alert('Congratulations, you won!');
             //document.location.reload();
             resetBricks();
@@ -242,34 +257,82 @@ function draw() {
   drawLives();
   collisionDetection();
 
+  let dx = ball_speed * Math.cos(ball_angle);
+  let dy = ball_speed * Math.sin(ball_angle);
+
+  // bounce off side walls
   if (ballX + dx > canvas.width - ballRadius || ballX + dx < ballRadius) {
     dx = -dx;
+    reflect_off_vertical();
   }
 
+  // bounce off top wall
   if (ballY + dy < ballRadius) {
     dy = -dy;
+    reflect_off_horizontal();
 
-} else if (ballY + dy > canvas.height - ballRadius) {
-  if (ballX > paddleX && ballX < paddleX + paddleWidth) {
-    // Calculate the relative position of the ball on the paddle (0 to 1)
-    const relativeBallPos = (ballX - paddleX) / paddleWidth;
 
-    // Calculate the angle based on the relative position of the ball on the paddle
-    const angle = ((relativeBallPos - 0.5) * Math.PI * 2 /3 )+Math.PI/6;
+  // bounce off bat OR lose a life / end game
+  } else if (ballY + dy > canvas.height - ballRadius) {
 
-    // Update the ball's velocities based on the angle
-    const paddleSpeedFactor = 0.5; // Adjust this value to control how much paddle speed affects the ball speed
+    // on the main part of the bat
+    if (ballX > paddleX && ballX < paddleX + paddleWidth) {
 
-    ball_speed = Math.sqrt(dx*dx + dy*dy);
-    // maybe should calculate ball angle - or in fact track angle and ball speed thoughout code, and 
-    // then just adjust angle here? 
+        dy = -dy;
+        reflect_off_horizontal();
 
-    dx = Math.sin(angle) * ball_speed * 1.2 + paddleSpeedFactor * (rightPressed - leftPressed) * paddleSpeed;
-    dy = -Math.cos(angle) * ball_speed;
+        const paddleSpeedFactor = 1.2; // Adjust this value to control how much paddle speed affects the ball speed
+        // add on the paddle speed
+        if(rightPressed) {
+          if(dx > 0)
+          {
+            ball_speed = ball_speed * paddleSpeedFactor;
+          }
+          else
+          {
+            ball_speed = ball_speed / paddleSpeedFactor;
+          }
+        } else if(leftPressed) {
+          if(dx < 0)
+          {
+            ball_speed = ball_speed * paddleSpeedFactor;
+          }
+          else
+          {
+            ball_speed = ball_speed / paddleSpeedFactor;
+          }
+        }
+        dx = ball_speed * Math.cos(ball_angle);
+        dy = ball_speed * Math.sin(ball_angle);
 
-//  } else if (ballY + dy > canvas.height - ballRadius) {
-//    if (ballX > paddleX && ballX < paddleX + paddleWidth) {
-//      dy = -dy;
+    // edge of the bat
+
+/*
+    } else if((ballX + ballRadius) > paddleX && (ballX - ballRadius ) < (paddleX + paddleWidth)) {
+
+        // Calculate the relative position of the ball on the paddle (0 to 1)
+        const relativeBallPos = (ballX - paddleX) / paddleWidth;
+
+        // Calculate the angle based on the relative position of the ball on the paddle
+        const angle = ((relativeBallPos - 0.5) * Math.PI * 2 /3 )+Math.PI/6;
+
+        // Update the ball's velocities based on the angle
+        const paddleSpeedFactor = 0.5; // Adjust this value to control how much paddle speed affects the ball speed
+
+        ball_speed = Math.sqrt(dx*dx + dy*dy);
+        // maybe should calculate ball angle - or in fact track angle and ball speed thoughout code, and 
+        // then just adjust angle here? 
+
+        dx = Math.sin(angle) * ball_speed * 1.2 + paddleSpeedFactor * (rightPressed - leftPressed) * paddleSpeed;
+        dy = -Math.cos(angle) * ball_speed;
+
+        dy = -dy;
+        reflect_off_horizontal()
+
+        // recalculate these
+        dx = ball_speed * cos(ball_angle)
+        dy = ball_speed * sin(ball_angle)
+*/
     } else {
       lives--;
       if (!lives) {
@@ -277,7 +340,9 @@ function draw() {
         document.location.reload();
       } else {
         reset_ball();
-        paddleX = (canvas.width - paddleWidth) / 2;
+        //paddleX = (canvas.width - paddleWidth) / 2;
+        dx = ball_speed * Math.cos(ball_angle)
+        dy = ball_speed * Math.sin(ball_angle)
       }
     }
   }
